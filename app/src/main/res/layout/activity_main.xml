@@ -6,7 +6,16 @@
     android:paddingTop="10dp"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
-
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <Button
+            android:id="@+id/update"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:text="update"/>
+    </LinearLayout>
     <LinearLayout
         android:orientation="horizontal"
         android:layout_width="match_parent"
@@ -22,6 +31,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text=""/>
+
 
     </LinearLayout>
 
