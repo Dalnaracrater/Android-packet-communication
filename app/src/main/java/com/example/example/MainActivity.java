@@ -46,8 +46,9 @@ public class MainActivity extends AppCompatActivity
     private PrintWriter mOut;
     private BufferedReader mIn;
     private Thread mReceiverThread = null;
-    private char[] sendPacket = {0x76, 0x00, 0x10, 0x00, 0x16, 0x46, 0x11, 0x07, 0x00};//22, 70, 17, 07
+    private char[] sendPacket = {0x76, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};//22, 70, 17, 07
     private char[] recvPacket = {0x76, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00};
+    private String msg;
 
     @Override
     public void onCreate(Bundle savedInstanceState)
@@ -57,6 +58,9 @@ public class MainActivity extends AppCompatActivity
         setContentView(R.layout.activity_main);
 
         mConnectionStatus = (TextView)findViewById(R.id.connection_status_textview);
+        mInputTextView = (TextView)findViewById(R.id.current_temperature);
+        mHumidityTextView = (TextView)findViewById(R.id.current_humidity);
+
         mInputEditText = (EditText)findViewById(R.id.input_string_edittext);
         ListView mMessageListview = (ListView) findViewById(R.id.message_listview);
         Button sendBtn = (Button)findViewById(R.id.send_button);
@@ -64,17 +68,25 @@ public class MainActivity extends AppCompatActivity
             public void onClick(View v){
 
                 sendPacket[4] = (char)Integer.parseInt(mInputEditText.getText().toString());
-                mInputTextView.setText(String.valueOf(sendPacket[4]));
+                //mInputTextView.setText(String.valueOf(sendPacket[4]));
                 System.out.println(sendPacket[4]);
+                //String temp = recvPacket;
 
+                System.out.println(3);
                 if(sendPacket[4] >= 0){
                     if (!isConnected) System.out.println("서버로 접속된후 다시 해보세요.");
                     else {
                         new Thread(new SenderThread(sendPacket)).start();
                         mInputEditText.setText("");
-                        mInputTextView.setText(String.valueOf(sendPacket[4]));
+                        //mInputTextView.setText(String.valueOf(sendPacket[4]));
+
                     }
+
                 }
+                new Thread(new ReceiverThread(recvPacket)).start();
+                msg = "T: " + (int)recvPacket[4] + " H: " + (int)recvPacket[5];
+                mInputTextView.setText(String.valueOf((int)recvPacket[4]));
+                mHumidityTextView.setText(String.valueOf((int)recvPacket[5]));
             }
         });
 
@@ -94,10 +106,14 @@ public class MainActivity extends AppCompatActivity
                     }
                     else {
                         new Thread(new SenderThread(sendPacket)).start();
-                        mInputEditText.setText("");
-                        mHumidityTextView.setText(String.valueOf(sendPacket[5]));
+                        mHumidityEditText.setText("");
+                        //mHumidityTextView.setText(String.valueOf(sendPacket[5]));
                     }
                 }
+                new Thread(new ReceiverThread(recvPacket)).start();
+                msg = "T: " + (int)recvPacket[4] + " H: " + (int)recvPacket[5];
+                mInputTextView.setText(String.valueOf((int)recvPacket[4]));
+                mHumidityTextView.setText(String.valueOf((int)recvPacket[5]));
             }
         });
 
@@ -116,9 +132,13 @@ public class MainActivity extends AppCompatActivity
                     else {
                         new Thread(new SenderThread(sendPacket)).start();
                         mStartEditText.setText("");
-                        mStartTextView.setText(String.valueOf(sendPacket[6]));
+                        mStartTextView.setText(String.valueOf((int)sendPacket[6]));
                     }
                 }
+                new Thread(new ReceiverThread(recvPacket)).start();
+                msg = "T: " + (int)recvPacket[4] + " H: " + (int)recvPacket[5];
+                mInputTextView.setText(String.valueOf((int)recvPacket[4]));
+                mHumidityTextView.setText(String.valueOf((int)recvPacket[5]));
             }
         });
 
@@ -137,9 +157,13 @@ public class MainActivity extends AppCompatActivity
                     else {
                         new Thread(new SenderThread(sendPacket)).start();
                         mEndEditText.setText("");
-                        mEndTextView.setText(String.valueOf(sendPacket[7]));
+                        mEndTextView.setText(String.valueOf((int)sendPacket[7]));
                     }
                 }
+                new Thread(new ReceiverThread(recvPacket)).start();
+                msg = "T: " + (int)recvPacket[4] + " H: " + (int)recvPacket[5];
+                mInputTextView.setText(String.valueOf((int)recvPacket[4]));
+                mHumidityTextView.setText(String.valueOf((int)recvPacket[5]));
             }
         });
 
@@ -172,6 +196,11 @@ public class MainActivity extends AppCompatActivity
         }
         else{
             Toast.makeText(getBaseContext(), "한번 더 뒤로가기를 누르면 종료됩니다.", Toast.LENGTH_SHORT).show();
+            for(int i = 4; i <= 7; i++){
+                sendPacket[i] = 0xFF;
+            }
+            new Thread(new SenderThread(sendPacket)).start();
+            System.out.println("끄으으으ㅡ으으ㅡㅌ");
             back_pressed = System.currentTimeMillis();
         }
     }
@@ -239,14 +268,13 @@ public class MainActivity extends AppCompatActivity
                         Log.d(TAG, "connected to " + serverIP);
                         mConnectionStatus.setText("connected to " + serverIP);
 
-                        mReceiverThread = new Thread(new ReceiverThread());
+                        mReceiverThread = new Thread(new ReceiverThread(recvPacket));
                         mReceiverThread.start();
                     }else{
 
                         Log.d(TAG, "failed to connect to server " + serverIP);
                         mConnectionStatus.setText("failed to connect to server "  + serverIP);
                     }
-
                 }
             });
         }
@@ -282,6 +310,14 @@ public class MainActivity extends AppCompatActivity
 
 
     private class ReceiverThread implements Runnable {
+        private String recvMessage;
+        private int[] recvSensor = {0x76, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00};
+
+        ReceiverThread(char[] m){
+            for(int i = 0; i < recvSensor.length; i++){
+                m[i] = (char)recvSensor[i];
+            }
+        }
 
         @Override
         public void run() {
@@ -293,22 +329,24 @@ public class MainActivity extends AppCompatActivity
                         break;
                     }
 
-//                    String recvMessage = "";
-//                    while((recvMessage =  mIn.readLine()) == null){
-//                        System.out.println(recvMessage);
-//                    }
-                    final String recvMessage = mIn.readLine();
-                    System.out.println(recvMessage);
+                    recvMessage = mIn.readLine();
 
-                    if (recvMessage != null) {
+                    for(int i = 0; i < recvSensor.length; i++){
+                        recvSensor[i] = recvMessage.indexOf(i);
+                    }
+
+                    final String logMessage = "T: " + String.valueOf(recvSensor[4]) + " H: " + String.valueOf(recvSensor[5]);
+                    System.out.println(logMessage);
+
+                    if (logMessage != null) {
 
                         runOnUiThread(new Runnable() {
 
                             @Override
                             public void run() {
 
-                                Log.d(TAG, "recv message: "+recvMessage);
-                                mConversationArrayAdapter.insert(mServerIP + " - " + recvMessage, 0);
+                                Log.d(TAG, "recv message: "+logMessage);
+                                mConversationArrayAdapter.insert(mServerIP + " - " + logMessage, 0);
                             }
                         });
                     }
